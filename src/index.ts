@@ -1,8 +1,31 @@
-import { decode as bech32Decode, encode as bech32Encode, fromWords as bech32FromWords, toWords as bech32ToWords } from 'bech32';
+import {
+  decode as bech32Decode,
+  encode as bech32Encode,
+  fromWords as bech32FromWords,
+  toWords as bech32ToWords,
+} from 'bech32';
 
 // @ts-ignore
-import { b32decode, b32encode, bs58Decode, bs58Encode, cashaddrDecode, cashaddrEncode, codec as xrpCodec, decodeCheck as decodeEd25519PublicKey, encodeCheck as encodeEd25519PublicKey, eosPublicKey, hex2a, isValid as isValidXemAddress, isValidChecksumAddress as rskIsValidChecksumAddress, ss58Decode, ss58Encode, stripHexPrefix as rskStripHexPrefix, toChecksumAddress as rskToChecksumAddress, ua2hex } from 'crypto-addr-codec';
-
+import {
+  b32decode,
+  b32encode,
+  bs58Decode,
+  bs58Encode,
+  cashaddrDecode,
+  cashaddrEncode,
+  codec as xrpCodec,
+  decodeCheck as decodeEd25519PublicKey,
+  encodeCheck as encodeEd25519PublicKey,
+  eosPublicKey,
+  hex2a,
+  isValid as isValidXemAddress,
+  isValidChecksumAddress as rskIsValidChecksumAddress,
+  ss58Decode,
+  ss58Encode,
+  stripHexPrefix as rskStripHexPrefix,
+  toChecksumAddress as rskToChecksumAddress,
+  ua2hex,
+} from 'crypto-addr-codec';
 
 type EnCoder = (data: Buffer) => string;
 type DeCoder = (data: string) => Buffer;
@@ -307,6 +330,44 @@ function tezosAddressDecoder(data: string): Buffer {
   }
 }
 
+// Reference from js library:
+// https://github.com/hashgraph/hedera-sdk-java/blob/120d98ac9cd167db767ed77bb52cefc844b09fc9/src/main/java/com/hedera/hashgraph/sdk/SolidityUtil.java#L26
+function hederaAddressEncoder(data: Buffer): string {
+  if (data.length !== 20) {
+    throw Error('Unrecognised address format');
+  }
+
+  const view = new DataView(data.buffer, 0);
+
+  const shard = view.getUint32(0);
+  const realm = view.getBigUint64(4);
+  const account = view.getBigUint64(12);
+
+  return [shard, realm, account].join('.');
+}
+
+// Reference from js library:
+// https://github.com/hashgraph/hedera-sdk-java/blob/120d98ac9cd167db767ed77bb52cefc844b09fc9/src/main/java/com/hedera/hashgraph/sdk/SolidityUtil.java#L26
+function hederaAddressDecoder(data: string): Buffer {
+  const buffer = Buffer.alloc(20);
+  const view = new DataView(buffer.buffer, 0, 20);
+
+  const components = data.split('.');
+  if (components.length !== 3) {
+    throw Error('Unrecognised address format');
+  }
+
+  const shard = Number(components[0]);
+  const realm = BigInt(components[1]);
+  const account = BigInt(components[2]);
+
+  view.setUint32(0, shard);
+  view.setBigUint64(4, realm);
+  view.setBigUint64(12, account);
+
+  return buffer;
+}
+
 const getConfig = (name: string, coinType: number, encoder: EnCoder, decoder: DeCoder) => {
   return {
     coinType,
@@ -348,6 +409,12 @@ const formats: IFormat[] = [
     name: 'XTZ',
   },
   bech32Chain('ADA', 1815, 'addr'),
+  {
+    coinType: 3030,
+    decoder: hederaAddressDecoder,
+    encoder: hederaAddressEncoder,
+    name: 'XHB',
+  },
   hexChecksumChain('CELO', 52752),
 ];
 
