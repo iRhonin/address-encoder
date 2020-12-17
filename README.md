@@ -90,6 +90,7 @@ This library currently supports the following cryptocurrencies and address forma
  - NANO (nano-base32)
  - NEM(XEM) (base32)
  - NEO (base58check)
+ - NULS (base58, no check)
  - NMC (base58check)
  - NRG (checksummed-hex)
  - ONE (bech32)

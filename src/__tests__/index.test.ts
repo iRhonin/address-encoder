@@ -867,6 +867,13 @@ const vectors: Array<TestVector> = [
     ],
   },
   {
+    name: 'NULS',
+    coinType: 8964,
+    passingVectors: [
+      { text: 'NULSd6HgeGo49MyuWRtkvyXJtUYGaDojLrXLK', hex: '010001a932efde727c56378747b910db34fb1892b7883d' },
+    ],
+  },
+  {
     name: 'AVAX',
     coinType: 9000,
     passingVectors: [

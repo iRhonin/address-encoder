@@ -1007,6 +1007,56 @@ function aionEncoder(data: Buffer): string {
   return '0x'.concat(data.toString('hex'));
 }
 
+// https://github.com/nuls-io/nuls-v2-js-sdk/blob/cc208cdc153d3fca1e001fbe7c457780523bd96a/lib/api/sdk.js#L85
+export function nulsAddressDecoder(stringAddress: string): Buffer {
+  stringAddress = '' + stringAddress;
+  if (stringAddress.startsWith('NULS')) {
+    stringAddress = stringAddress.substring(5);
+  } else if (stringAddress.startsWith('tNULS')) {
+    stringAddress = stringAddress.substring(6);
+  } else {
+    for (let i = 0; i < stringAddress.length; i++) {
+      let val = stringAddress.charAt(i);
+      if (val.charCodeAt(0) >= 97) {
+        stringAddress = stringAddress.substring(i + 1);
+        break;
+      }
+    }
+  }
+  let bytes = bs58DecodeNoCheck(stringAddress);
+  return bytes.slice(0, bytes.length - 1);
+}
+
+// https://github.com/nuls-io/nuls-v2-js-sdk/blob/cc208cdc153d3fca1e001fbe7c457780523bd96a/lib/api/sdk.js#L107
+export function nulsAddressEncoder(bytes: Buffer): string {
+  var chainId = (bytes[0] & 0xff) | ((bytes[1] & 0xff) << 8);
+  let chainIdBuffer = Buffer.concat([Buffer.from([0xff & (chainId >> 0)]), Buffer.from([0xff & (chainId >> 8)])]);
+  let tempBuffer = Buffer.allocUnsafe(bytes.length + 1);
+  let xor = 0x00;
+  let temp;
+  let prefix = '';
+
+  for (let i = 0; i < bytes.length; i++) {
+    temp = bytes[i];
+    temp = temp > 127 ? temp - 256 : temp;
+    tempBuffer[i] = temp;
+    xor ^= temp;
+  }
+  tempBuffer[bytes.length] = xor;
+
+  if (1 === chainId) {
+    prefix = 'NULS';
+  } else if (2 === chainId) {
+    prefix = 'tNULS';
+  } else if (prefix.length !== 0) {
+    prefix = prefix.toUpperCase();
+  } else {
+    prefix = bs58EncodeNoCheck(chainIdBuffer).toUpperCase();
+  }
+  let constant = ['a', 'b', 'c', 'd', 'e'];
+  return prefix + constant[prefix.length - 1] + bs58EncodeNoCheck(tempBuffer);
+}
+
 const getConfig = (name: string, coinType: number, encoder: EnCoder, decoder: DeCoder) => {
   return {
     coinType,
@@ -1117,6 +1167,12 @@ export const formats: IFormat[] = [
   },
   getConfig('IOTA', 4218, bs58Encode, bs58Decode),
   getConfig('HNS', 5353, hnsAddressEncoder, hnsAddressDecoder),
+  {
+    coinType: 8964,
+    decoder: nulsAddressDecoder,
+    encoder: nulsAddressEncoder,
+    name: 'NULS',
+  },
   bech32Chain('AVAX', 9000, 'avax'),
   hexChecksumChain('NRG', 9797),
   getConfig('ARDR', 16754, ardrAddressEncoder, ardrAddressDecoder),
